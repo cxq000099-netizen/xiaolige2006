@@ -136,3 +136,36 @@ function observeLayout() {
   for(const query of ['(horizontal-viewport-segments: 2)','(vertical-viewport-segments: 2)'])matchMedia(query).addEventListener('change',refresh);
 }
 initControls(); filter(); initializeMap(); observeLayout();
+
+async function initializeVisits() {
+  const endpoint=document.querySelector('meta[name="analytics-endpoint"]')?.content?.trim().replace(/\/$/,'');
+  if(!endpoint)return;
+  const status=$('visit-status');
+  let base;try{base=new URL(endpoint);if(base.protocol!=='https:')throw new Error();}catch{status.textContent='访问统计暂不可用';return;}
+  const provinces={'11':'北京市','12':'天津市','13':'河北省','14':'山西省','15':'内蒙古自治区','21':'辽宁省','22':'吉林省','23':'黑龙江省','31':'上海市','32':'江苏省','33':'浙江省','34':'安徽省','35':'福建省','36':'江西省','37':'山东省','41':'河南省','42':'湖北省','43':'湖南省','44':'广东省','45':'广西壮族自治区','46':'海南省','50':'重庆市','51':'四川省','52':'贵州省','53':'云南省','54':'西藏自治区','61':'陕西省','62':'甘肃省','63':'青海省','64':'宁夏回族自治区','65':'新疆维吾尔自治区','--':'省级地区未知'};
+  const count=value=>Number.isSafeInteger(value)&&value>=0?value:0;
+  const number=value=>count(value).toLocaleString('zh-CN');
+  const regionNames=typeof Intl.DisplayNames==='function'?new Intl.DisplayNames(['zh-CN'],{type:'region'}):null;
+  const countryName=code=>code==='XX'?'地区未知':(/^[A-Z]{2}$/.test(code)?regionNames?.of(code)||code:'地区未知');
+  const rows=(values,label)=>values.map(x=>`<li><span>${escapeHtml(label(x.code))}</span><strong>${number(x.views)} 次</strong></li>`).join('')||'<li class="stats-empty">暂无访问记录。</li>';
+  status.textContent='正在读取访问统计…';
+  const request=async(path,options={})=>{
+    const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),8000);
+    try{const response=await fetch(endpoint+path,{...options,credentials:'omit',referrerPolicy:'no-referrer',signal:controller.signal});if(!response.ok)throw new Error();return await response.json();}finally{clearTimeout(timer);}
+  };
+  let counted=false;
+  // Exactly one POST per document load. Opening a disclosure or changing filters does not count.
+  try{const result=await request('/visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page:'home'})});counted=result.counted===true;}catch{}
+  try{
+    const data=await request('/stats');
+    if(!Number.isSafeInteger(data.total)||data.total<0||!Array.isArray(data.countries)||!Array.isArray(data.provinces))throw new Error();
+    $('visit-total').textContent=number(data.total);
+    $('visit-countries').innerHTML=rows(data.countries,countryName);
+    const provinceCounts=new Map(data.provinces.map(x=>[x.code,count(x.views)]));
+    const provinceRows=Object.keys(provinces).filter(code=>code!=='--'||provinceCounts.has(code)).map(code=>({code,views:provinceCounts.get(code)||0})).sort((a,b)=>b.views-a.views||a.code.localeCompare(b.code));
+    $('visit-provinces').innerHTML=rows(provinceRows,code=>provinces[code]);
+    const since=data.since?new Date(data.since):null;
+    status.textContent=(since&&!Number.isNaN(since.getTime())?'自 '+since.toLocaleDateString('zh-CN')+' 起累计':'统计已启用')+(counted?' · 本次访问已计入':' · 本次访问暂未计入');
+  }catch{status.textContent='访问统计暂不可用，请稍后再看';for(const id of ['visit-countries','visit-provinces'])$(id).innerHTML='<li class="stats-empty">暂时无法读取统计数据。</li>';}
+}
+initializeVisits();
