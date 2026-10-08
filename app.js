@@ -15,6 +15,13 @@ const config = {
   '酒吧': {icon:'🍸', color:'#735d82', image:'Freshly_baked_pastries_with_coffee_and_cookies_on_a_table.jpg'},
   '自助餐': {icon:'🍽', color:'#637c7d', image:'Chengdu_Hotpot.jpg'}
 };
+const typePins = {
+  '老店':{icon:'🏮',color:'#c44a35'},'连锁':{icon:'🏬',color:'#397a75'},
+  '独立经营':{icon:'🥢',color:'#955f3e'},'社区店':{icon:'🏠',color:'#658a54'},
+  '路边摊':{icon:'🍢',color:'#dc832d'},'新店':{icon:'✨',color:'#8c68a8'},
+  '小店':{icon:'🍽',color:'#ba7658'},'老店 / 连锁':{icon:'🏪',color:'#725f94'},
+  '其他':{icon:'📍',color:'#657b87'},'未注明':{icon:'●',color:'#85948b'}
+};
 // Sheet coordinates are district-level only. These central points are intentionally illustrative.
 const districts = {
   '锦江区':[30.657,104.083],'青羊区':[30.674,104.057],'金牛区':[30.692,104.052],
@@ -64,18 +71,18 @@ function renderMarkers() {
   const groups = new Map();
   for (const item of state.filtered) {
     const center=areaCenter(item.area); if(!center)continue;
-    const key=item.area.replace(/[（(].*$/,'')+'|'+item.category;
-    if(!groups.has(key))groups.set(key,{items:[],center,category:item.category,area:item.area});
+    const key=item.area.replace(/[（(].*$/,'')+'|'+item.type;
+    if(!groups.has(key))groups.set(key,{items:[],center,type:item.type,area:item.area});
     groups.get(key).items.push(item);
   }
   for (const group of groups.values()) {
-    const c=config[group.category], n=Object.keys(config).indexOf(group.category);
+    const c=typePins[group.type], n=Object.keys(typePins).indexOf(group.type);
     const angle=n*2.39996,radius=.008+(n%3)*.004;
     const p=[group.center[0]+Math.sin(angle)*radius,group.center[1]+Math.cos(angle)*radius];
     const icon=L.divIcon({className:'food-marker',html:`<span style="--pin:${c.color}" aria-hidden="true"><b>${c.icon}</b><small>${group.items.length}</small></span>`,iconSize:[43,43],iconAnchor:[21,21]});
-    const marker=L.marker(p,{icon,title:group.area+' · '+group.category+' · '+group.items.length+'家'}).addTo(markerLayer);
-    const names=group.items.slice(0,12).map(x=>`<li><a href="${mapSearch(x)}" target="_blank" rel="noopener">${escapeHtml(x.name)} ↗</a></li>`).join('');
-    marker.bindPopup(`<div class="map-popup"><small>${escapeHtml(group.area)} · 区域示意</small><strong>${c.icon} ${escapeHtml(group.category)} · ${group.items.length} 家</strong><ul>${names}</ul>${group.items.length>12?'<p>更多店铺请在下方列表查看。</p>':''}</div>`,{maxWidth:280});
+    const marker=L.marker(p,{icon,title:group.area+' · '+group.type+' · '+group.items.length+'家'}).addTo(markerLayer);
+    const names=group.items.slice(0,12).map(x=>`<li><a href="${mapSearch(x)}" target="_blank" rel="noopener">${escapeHtml(x.name)} <small>${escapeHtml(x.category)}</small> ↗</a></li>`).join('');
+    marker.bindPopup(`<div class="map-popup"><small>${escapeHtml(group.area)} · 区域示意</small><strong>${c.icon} ${escapeHtml(group.type)} · ${group.items.length} 家</strong><ul>${names}</ul>${group.items.length>12?'<p>更多店铺请在下方列表查看。</p>':''}</div>`,{maxWidth:280});
     for(const item of group.items)markerById.set(item.id,marker);
   }
 }
@@ -92,7 +99,7 @@ function initControls() {
   selectOptions('occasion-filter', DATA.map(x=>x.occasion));
   const categories = Object.keys(config).filter(c => DATA.some(x=>x.category===c));
   $('categories').innerHTML = `<button type="button" class="active" data-category="">全部 <span>${DATA.length}</span></button>` + categories.map(c=>`<button type="button" data-category="${escapeHtml(c)}">${config[c].icon} ${escapeHtml(c)} <span>${DATA.filter(x=>x.category===c).length}</span></button>`).join('');
-  $('legend').innerHTML = categories.map(c=>`<span><i style="--pin:${config[c].color}">${config[c].icon}</i>${escapeHtml(c)}</span>`).join('');
+  $('legend').innerHTML = Object.entries(typePins).filter(([type])=>DATA.some(x=>x.type===type)).map(([type,c])=>`<span><i style="--pin:${c.color}">${c.icon}</i>${escapeHtml(type)}</span>`).join('');
   for (const id of ['search','type-filter','taste-filter','occasion-filter']) $(id).addEventListener(id==='search'?'input':'change', filter);
   $('categories').addEventListener('click', e => {const b=e.target.closest('button[data-category]');if(!b)return;state.category=b.dataset.category;state.shown=18;for(const x of $('categories').querySelectorAll('button'))x.classList.toggle('active',x===b);filter();});
   $('reset').addEventListener('click',()=>{for(const id of ['search','type-filter','taste-filter','occasion-filter'])$(id).value='';state.category='';state.shown=18;for(const x of $('categories').querySelectorAll('button'))x.classList.toggle('active',x.dataset.category==='');filter();});
