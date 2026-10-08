@@ -2,18 +2,18 @@ const DATA = window.RESTAURANTS || [];
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const config = {
-  '川菜': {icon:'🌶', color:'#dc5136', image:'Authentic_Mapo_Tofu.jpg'},
-  '火锅': {icon:'🍲', color:'#c63b28', image:'Chengdu_Hotpot.jpg'},
-  '串串': {icon:'🍢', color:'#d77a2a', image:'Chengdu_bobo_chicken_skewers.jpg'},
-  '烧烤': {icon:'🔥', color:'#a4472e', image:'Chengdu_bobo_chicken_skewers.jpg'},
-  '创意菜': {icon:'✨', color:'#9d7147', image:'Authentic_Mapo_Tofu.jpg'},
-  '地方菜': {icon:'🥢', color:'#b36e40', image:'Authentic_Mapo_Tofu.jpg'},
-  '异国菜': {icon:'🌍', color:'#5b8266', image:'Authentic_Mapo_Tofu.jpg'},
-  '面包甜点': {icon:'🥐', color:'#c79857', image:'Freshly_baked_pastries_with_coffee_and_cookies_on_a_table.jpg'},
-  '咖啡茶饮': {icon:'☕', color:'#816348', image:'Freshly_baked_pastries_with_coffee_and_cookies_on_a_table.jpg'},
-  '面食小吃': {icon:'🍜', color:'#b9863e', image:'Dandannoodles.jpg'},
-  '酒吧': {icon:'🍸', color:'#735d82', image:'Freshly_baked_pastries_with_coffee_and_cookies_on_a_table.jpg'},
-  '自助餐': {icon:'🍽', color:'#637c7d', image:'Chengdu_Hotpot.jpg'}
+  '川菜': {icon:'🌶', color:'#dc5136'},
+  '火锅': {icon:'🍲', color:'#c63b28'},
+  '串串': {icon:'🍢', color:'#d77a2a'},
+  '烧烤': {icon:'🔥', color:'#a4472e'},
+  '创意菜': {icon:'✨', color:'#9d7147'},
+  '地方菜': {icon:'🥢', color:'#b36e40'},
+  '异国菜': {icon:'🌍', color:'#5b8266'},
+  '面包甜点': {icon:'🥐', color:'#c79857'},
+  '咖啡茶饮': {icon:'☕', color:'#816348'},
+  '面食小吃': {icon:'🍜', color:'#b9863e'},
+  '酒吧': {icon:'🍸', color:'#735d82'},
+  '自助餐': {icon:'🍽', color:'#637c7d'}
 };
 const typePins = {
   '老店':{icon:'🏮',color:'#c44a35'},'连锁':{icon:'🏬',color:'#397a75'},
@@ -35,30 +35,35 @@ const districts = {
 };
 const state = {category:'', shown:18, filtered:DATA};
 let map, markerLayer, markerById = new Map();
+const ratingWords={3:'普通好',4:'很好',5:'非常好',6:'超级好'};
+const pointById=new Map();
+const byDistrict=new Map();
+for(const item of DATA){if(districts[item.district]){if(!byDistrict.has(item.district))byDistrict.set(item.district,[]);byDistrict.get(item.district).push(item);}}
+for(const [district,items] of byDistrict){
+  const center=districts[district];
+  items.forEach((item,index)=>{
+    const angle=index*2.399963229728653;
+    const radius=.004+Math.sqrt(index)*.005;
+    pointById.set(item.id,[center[0]+Math.sin(angle)*radius,center[1]+Math.cos(angle)*radius]);
+  });
+}
 
-function areaCenter(area) {
-  if (!area) return null;
-  const key = Object.keys(districts).find(k => area.includes(k) || k.includes(area));
-  return key ? districts[key] : null;
-}
-function point(item) {
-  const center = areaCenter(item.area);
-  if (!center) return null;
-  // Keep coincident district-level records individually selectable without implying a street address.
-  const angle = (item.id * 137.508) * Math.PI / 180;
-  const radius = 0.003 + ((item.id * 29) % 13) * 0.0011;
-  return [center[0] + Math.sin(angle) * radius, center[1] + Math.cos(angle) * radius];
-}
+function point(item) {return pointById.get(item.id)||null;}
 function mapSearch(item) {
   return 'https://uri.amap.com/search?keyword=' + encodeURIComponent(item.name + ' ' + (item.area || '成都')) + '&city=510100&view=map&src=xiaolige-food-map&callnative=0';
 }
-function imageFor(item) {
-  const file = config[item.category]?.image;
-  return file ? 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(file) + '?width=640' : '';
+function cartoonFor(item) {
+  const c=config[item.category], shift=(item.id*19)%45;
+  return `<svg viewBox="0 0 360 180" role="img" aria-label="${escapeHtml(item.category)}卡通图案，非店铺实拍" xmlns="http://www.w3.org/2000/svg"><rect width="360" height="180" fill="#f1e9d8"/><path d="M0 ${28+shift}L360 ${-55+shift}M0 ${95+shift}L360 ${12+shift}M0 ${160+shift}L360 ${78+shift}" stroke="${c.color}" stroke-opacity=".16" stroke-width="19"/><circle cx="180" cy="90" r="73" fill="#fffaf0" stroke="${c.color}" stroke-width="7"/><circle cx="180" cy="90" r="57" fill="${c.color}" fill-opacity=".12"/><text x="180" y="121" text-anchor="middle" font-size="77">${c.icon}</text><circle cx="53" cy="31" r="6" fill="${c.color}" opacity=".45"/><circle cx="318" cy="135" r="10" fill="${c.color}" opacity=".27"/><text x="15" y="168" fill="${c.color}" font-size="11" font-family="sans-serif" font-weight="700" letter-spacing="2">XIAOLIGE · CHENGDU</text></svg>`;
+}
+function showDetails(item) {
+  const panel=$('shop-detail');
+  panel.innerHTML=`<button class="detail-close" type="button" aria-label="关闭店铺介绍">×</button><small>${escapeHtml(item.district)} · ${escapeHtml(item.category)} · ${escapeHtml(item.type)} · 区域示意</small><h3>${escapeHtml(item.name)}</h3><div class="popup-rating"><span>${'★'.repeat(item.stars)}</span> ${item.stars}星 · ${ratingWords[item.stars]}</div><p><b>介绍</b><br>${escapeHtml(item.reason)}</p><p><b>评价</b><br>${escapeHtml(item.review)}</p><a href="${mapSearch(item)}" target="_blank" rel="noopener">查找准确店址 ↗</a>`;
+  panel.hidden=false;
 }
 function initializeMap() {
   if (!window.L) { $('map-fallback').hidden = false; return; }
-  map = L.map('map', {scrollWheelZoom:false, zoomControl:false}).setView([30.65,104.067], 10);
+  map = L.map('map', {scrollWheelZoom:false, zoomControl:false}).setView([30.65,104.067], 12);
   L.control.zoom({position:'bottomright'}).addTo(map);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18, attribution:'© OpenStreetMap contributors'}).addTo(map);
   markerLayer = L.layerGroup().addTo(map);
@@ -68,22 +73,13 @@ function initializeMap() {
 function renderMarkers() {
   if (!map) return;
   markerLayer.clearLayers(); markerById.clear();
-  const groups = new Map();
   for (const item of state.filtered) {
-    const center=areaCenter(item.area); if(!center)continue;
-    const key=item.area.replace(/[（(].*$/,'')+'|'+item.type;
-    if(!groups.has(key))groups.set(key,{items:[],center,type:item.type,area:item.area});
-    groups.get(key).items.push(item);
-  }
-  for (const group of groups.values()) {
-    const c=typePins[group.type], n=Object.keys(typePins).indexOf(group.type);
-    const angle=n*2.39996,radius=.008+(n%3)*.004;
-    const p=[group.center[0]+Math.sin(angle)*radius,group.center[1]+Math.cos(angle)*radius];
-    const icon=L.divIcon({className:'food-marker',html:`<span style="--pin:${c.color}" aria-hidden="true"><b>${c.icon}</b><small>${group.items.length}</small></span>`,iconSize:[43,43],iconAnchor:[21,21]});
-    const marker=L.marker(p,{icon,title:group.area+' · '+group.type+' · '+group.items.length+'家'}).addTo(markerLayer);
-    const names=group.items.slice(0,12).map(x=>`<li><a href="${mapSearch(x)}" target="_blank" rel="noopener">${escapeHtml(x.name)} <small>${escapeHtml(x.category)}</small> ↗</a></li>`).join('');
-    marker.bindPopup(`<div class="map-popup"><small>${escapeHtml(group.area)} · 区域示意</small><strong>${c.icon} ${escapeHtml(group.type)} · ${group.items.length} 家</strong><ul>${names}</ul>${group.items.length>12?'<p>更多店铺请在下方列表查看。</p>':''}</div>`,{maxWidth:280});
-    for(const item of group.items)markerById.set(item.id,marker);
+    const p=point(item);if(!p)continue;
+    const c=typePins[item.type]||typePins['未注明'];
+    const icon=L.divIcon({className:'food-marker single-marker',html:`<span style="--pin:${c.color}" aria-hidden="true"><b>${c.icon}</b></span>`,iconSize:[24,24],iconAnchor:[12,12]});
+    const marker=L.marker(p,{icon,title:item.name,riseOnHover:true}).addTo(markerLayer);
+    marker.on('mouseover click',()=>showDetails(item));
+    markerById.set(item.id,marker);
   }
 }
 function selectOptions(id, values) {
@@ -94,27 +90,31 @@ function selectOptions(id, values) {
 }
 function initControls() {
   $('total-count').textContent = DATA.length;
+  selectOptions('area-filter', DATA.map(x=>x.district));
   selectOptions('type-filter', DATA.map(x=>x.type));
   selectOptions('taste-filter', DATA.map(x=>x.taste));
   selectOptions('occasion-filter', DATA.map(x=>x.occasion));
   const categories = Object.keys(config).filter(c => DATA.some(x=>x.category===c));
   $('categories').innerHTML = `<button type="button" class="active" data-category="">全部 <span>${DATA.length}</span></button>` + categories.map(c=>`<button type="button" data-category="${escapeHtml(c)}">${config[c].icon} ${escapeHtml(c)} <span>${DATA.filter(x=>x.category===c).length}</span></button>`).join('');
   $('legend').innerHTML = Object.entries(typePins).filter(([type])=>DATA.some(x=>x.type===type)).map(([type,c])=>`<span><i style="--pin:${c.color}">${c.icon}</i>${escapeHtml(type)}</span>`).join('');
-  for (const id of ['search','type-filter','taste-filter','occasion-filter']) $(id).addEventListener(id==='search'?'input':'change', filter);
+  for (const id of ['area-filter','type-filter','taste-filter','occasion-filter']) $(id).addEventListener('change', filter);
   $('categories').addEventListener('click', e => {const b=e.target.closest('button[data-category]');if(!b)return;state.category=b.dataset.category;state.shown=18;for(const x of $('categories').querySelectorAll('button'))x.classList.toggle('active',x===b);filter();});
-  $('reset').addEventListener('click',()=>{for(const id of ['search','type-filter','taste-filter','occasion-filter'])$(id).value='';state.category='';state.shown=18;for(const x of $('categories').querySelectorAll('button'))x.classList.toggle('active',x.dataset.category==='');filter();});
+  $('reset').addEventListener('click',()=>{for(const id of ['area-filter','type-filter','taste-filter','occasion-filter'])$(id).value='';state.category='';state.shown=18;for(const x of $('categories').querySelectorAll('button'))x.classList.toggle('active',x.dataset.category==='');filter();});
   $('more').addEventListener('click',()=>{state.shown+=18;renderList();});
-  $('listing').addEventListener('click',e=>{const b=e.target.closest('button[data-focus]');if(!b)return;const m=markerById.get(Number(b.dataset.focus));if(m&&map){map.flyTo(m.getLatLng(),Math.max(map.getZoom(),12));m.openPopup();document.querySelector('.map-section').scrollIntoView({behavior:'smooth'});}});
+  $('shop-detail').addEventListener('click',e=>{if(e.target.closest('.detail-close'))$('shop-detail').hidden=true;});
+  $('listing').addEventListener('click',e=>{const b=e.target.closest('button[data-focus]');if(!b)return;const id=Number(b.dataset.focus),m=markerById.get(id),item=DATA.find(x=>x.id===id);if(m&&map&&item){map.flyTo(m.getLatLng(),Math.max(map.getZoom(),12));showDetails(item);document.querySelector('.map-section').scrollIntoView({behavior:'smooth'});}});
 }
 function filter() {
-  const q=$('search').value.trim().toLocaleLowerCase();
+  const area=$('area-filter').value;
   const type=$('type-filter').value,taste=$('taste-filter').value,occasion=$('occasion-filter').value;
-  state.filtered=DATA.filter(x=>(!state.category||x.category===state.category)&&(!type||x.type===type)&&(!taste||x.taste===taste)&&(!occasion||x.occasion===occasion)&&(!q||(x.name+x.area).toLocaleLowerCase().includes(q)));
+  state.filtered=DATA.filter(x=>(!state.category||x.category===state.category)&&(!area||x.district===area)&&(!type||x.type===type)&&(!taste||x.taste===taste)&&(!occasion||x.occasion===occasion));
   state.shown=18;$('result-count').textContent=state.filtered.length+' 家结果';renderList();renderMarkers();
+  $('shop-detail').hidden=true;
+  if(map){if(area&&districts[area])map.flyTo(districts[area],14);else if(!area)map.setView([30.65,104.067],12);}
 }
 function card(item) {
   const c=config[item.category], p=point(item);
-  return `<article class="card"><div class="card-image" style="--tone:${c.color}"><img src="${imageFor(item)}" alt="${escapeHtml(item.category)}同类美食示意图，非该店实拍" loading="lazy" onerror="this.hidden=true"><span class="image-label">同类美食示意 · 非店铺实拍</span></div><div class="card-body"><div class="card-meta"><span class="cat" style="--pin:${c.color}">${c.icon} ${escapeHtml(item.category)}</span><span>${escapeHtml(item.area||'区域待核实')}</span></div><h3>${escapeHtml(item.name)}</h3><p class="reason">${escapeHtml(item.reason)}</p><div class="tags"><span>饭店类型：${escapeHtml(item.type)}</span><span>口味：${escapeHtml(item.taste)}</span><span>适合的场合：${escapeHtml(item.occasion)}</span></div><div class="card-actions">${p?`<button type="button" data-focus="${item.id}">地图示意点 ↗</button>`:'<span class="no-point">位置待核实</span>'}<a href="${mapSearch(item)}" target="_blank" rel="noopener">查找准确店址 ↗</a></div></div></article>`;
+  return `<article class="card"><div class="card-image" style="--tone:${c.color}">${cartoonFor(item)}<span class="image-label">卡通图案 · 非店铺实拍</span></div><div class="card-body"><div class="card-meta"><span class="cat" style="--pin:${c.color}">${c.icon} ${escapeHtml(item.category)}</span><span>${escapeHtml(item.district)}</span></div><h3>${escapeHtml(item.name)}</h3><div class="card-rating"><span>${'★'.repeat(item.stars)}</span> ${item.stars}星 · ${ratingWords[item.stars]}</div><p class="reason">${escapeHtml(item.reason)}</p><p class="review"><b>评价摘要</b> ${escapeHtml(item.review)}</p><div class="tags"><span>饭店类型：${escapeHtml(item.type)}</span><span>口味：${escapeHtml(item.taste)}</span><span>适合的场合：${escapeHtml(item.occasion)}</span></div><div class="card-actions">${p?`<button type="button" data-focus="${item.id}">查看地图标记 ↗</button>`:'<span class="no-point">区域待核实</span>'}<a href="${mapSearch(item)}" target="_blank" rel="noopener">查找准确店址 ↗</a></div></div></article>`;
 }
 function renderList() {
   const items=state.filtered.slice(0,state.shown);
