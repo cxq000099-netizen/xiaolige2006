@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171715">
+  <title>小李哥 · 摄影作品</title>
+  <meta name="description" content="小李哥的摄影作品：人物、建筑、风景与人文。以镜头记录人与世界。">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='6' fill='%23171715'/%3E%3Ccircle cx='20' cy='20' r='11' fill='none' stroke='%23e9e7df' stroke-width='3'/%3E%3Ccircle cx='20' cy='20' r='4' fill='%23d4a66a'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script src="photos.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="#top" aria-label="小李哥摄影作品首页">小李哥 <span>/</span> 摄影</a>
+    <nav aria-label="页面导航"><a href="#portfolio">作品</a><a href="#about">关于</a></nav>
+  </header>
+  <main id="top">
+    <section class="intro" aria-labelledby="intro-title">
+      <div class="intro-copy"><p class="overline">XIAOLIGE / PHOTOGRAPHY</p><h1 id="intro-title">留住光，<br><em>也留住生活。</em></h1><p class="intro-desc">人物的神情、建筑的线条、山海的光影，还有街头的日常。用照片，收藏每一个值得停留的瞬间。</p><a class="view-link" href="#portfolio">浏览作品 <span aria-hidden="true">↘</span></a></div>
+      <div class="intro-side" aria-hidden="true"><span>01 — 04</span><div class="vertical-rule"></div><span>PEOPLE<br>ARCHITECTURE<br>LANDSCAPE<br>DOCUMENTARY</span></div>
+    </section>
+    <section class="portfolio" id="portfolio" aria-labelledby="portfolio-title">
+      <div class="section-heading"><div><p class="overline">SELECTED WORKS</p><h2 id="portfolio-title">摄影作品<span class="count" id="photo-count">00</span></h2></div><p>以目光为线索，慢慢整理。</p></div>
+      <div class="filters" id="filters" role="group" aria-label="筛选照片类别"><button type="button" class="active" data-category="all" aria-pressed="true">全部</button><button type="button" data-category="人物" aria-pressed="false">人物</button><button type="button" data-category="建筑" aria-pressed="false">建筑</button><button type="button" data-category="风景" aria-pressed="false">风景</button><button type="button" data-category="人文" aria-pressed="false">人文</button></div>
+      <div class="gallery" id="gallery" aria-live="polite"></div>
+      <div class="empty" id="empty"><span class="empty-num">00</span><div><p class="empty-label">作品整理中</p><h3>下一张照片，<br>会从这里开始。</h3><p>人物、建筑、风景与人文作品将陆续呈现。</p></div></div>
+    </section>
+    <section class="about" id="about"><p class="overline">BEHIND THE LENS</p><div><h2>关于这双眼睛</h2><p>我是小李哥。喜欢用镜头观察人与环境的关系，也喜欢在熟悉的日常里寻找新的画面。这里收藏我拍摄的照片，按人物、建筑、风景和人文分类，持续更新。</p></div></section>
+  </main>
+  <footer><span>© <span id="year"></span> 小李哥 · 摄影</span><span>在光与影之间，继续看见。</span><a href="#top">返回顶部 ↑</a></footer>
+  <dialog id="lightbox" aria-label="查看照片"><button type="button" class="close" id="close-lightbox" aria-label="关闭照片">×</button><button type="button" class="prev" id="prev-photo" aria-label="上一张照片">‹</button><figure><img id="lightbox-image" alt=""><figcaption><span id="lightbox-category"></span><strong id="lightbox-title"></strong><span id="lightbox-place"></span></figcaption></figure><button type="button" class="next" id="next-photo" aria-label="下一张照片">›</button></dialog>
+</body>
+</html>
