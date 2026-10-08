@@ -78,7 +78,8 @@ function renderMarkers() {
     const c=typePins[item.type]||typePins['未注明'];
     const icon=L.divIcon({className:'food-marker single-marker',html:`<span style="--pin:${c.color}" aria-hidden="true"><b>${c.icon}</b></span>`,iconSize:[24,24],iconAnchor:[12,12]});
     const marker=L.marker(p,{icon,title:item.name,riseOnHover:true}).addTo(markerLayer);
-    marker.on('mouseover click',()=>showDetails(item));
+    marker.on('click',()=>showDetails(item));
+    marker.on('mouseover',()=>{if(matchMedia('(hover: hover)').matches)showDetails(item);});
     markerById.set(item.id,marker);
   }
 }
@@ -121,4 +122,17 @@ function renderList() {
   $('listing').innerHTML=items.length?items.map(card).join(''):'<p class="empty">暂时没有符合条件的店，试试其他筛选。</p>';
   $('more').hidden=state.filtered.length<=state.shown;
 }
-initControls(); filter(); initializeMap();
+function observeLayout() {
+  let frame;
+  const refresh=()=>{
+    cancelAnimationFrame(frame);
+    frame=requestAnimationFrame(()=>{if(map)map.invalidateSize({pan:false,debounceMoveend:true});});
+  };
+  // Preserve the selected restaurant, filters and map center while the screen changes.
+  if(window.ResizeObserver)new ResizeObserver(refresh).observe($('map'));
+  window.addEventListener('resize',refresh,{passive:true});
+  window.visualViewport?.addEventListener('resize',refresh,{passive:true});
+  navigator.devicePosture?.addEventListener('change',refresh);
+  for(const query of ['(horizontal-viewport-segments: 2)','(vertical-viewport-segments: 2)'])matchMedia(query).addEventListener('change',refresh);
+}
+initControls(); filter(); initializeMap(); observeLayout();
